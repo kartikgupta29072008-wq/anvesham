@@ -512,15 +512,10 @@ function updatePalette() {
         counts[state]++;
         
 // 🚨 NEW: Map to the exact NTA shapes from the CSS!
+       const btn = document.createElement('button');
         let stateClass = ['s-not-visited', 's-not-answered', 's-answered', 's-marked', 's-answered-marked'][state];
-
-        const btn = document.createElement('button');
-        btn.className = `badge pal-btn ${stateClass}`;
-        btn.innerText = q.displayNumber; // Keeps global question number (e.g., 9, 10, 11)
-        btn.onclick = () => loadQuestion(q.globalIndex);
-        palette.appendChild(btn);btn.className = `nta-shape pal-btn ${stateClass}`;
+        btn.className = `nta-shape pal-btn ${stateClass}`;
         
-        // Inject the tiny green tick if it's "Answered & Marked"
         if (state === 4) {
             btn.innerHTML = `${q.displayNumber}<span class="tiny-tick">✔</span>`;
         } else {
@@ -738,8 +733,9 @@ function generateBeastReport(isNewSubmission = false) {
         });
         updatePerformanceLogsUI();
     }
-  // --- SAVE TO LOGS ---
-    if (isNewLog) {
+// ================= CORRECTED: SAVE TO LOGS =================
+    // Use 'isNewSubmission' (the parameter) instead of 'isNewLog'
+    if (isNewSubmission) {
         const newLogData = {
             title: testData.title || "Practice Test",
             date: new Date().toLocaleString(),
@@ -761,11 +757,12 @@ function generateBeastReport(isNewSubmission = false) {
                 updatePerformanceLogsUI();
             }).catch(err => console.error("Error saving log:", err));
         } else {
-            // GUEST MODE: Save temporarily
+            // GUEST MODE: Save temporarily in the browser
             performanceLogs.push(newLogData);
             updatePerformanceLogsUI();
         }
     }
+    // ==============================================================
     // Inject the specific subject sub-scores (Green, Orange, Blue)
     let miniHtml = '';
     for(let sec in sectionStats) {
