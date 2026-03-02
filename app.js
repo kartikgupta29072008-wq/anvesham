@@ -224,44 +224,70 @@ function processNewJSONFormat() {
 }
 // ================= Screen 2: Instructions =================
 function prepareInstructions() {
-    document.getElementById('inst-test-title').innerText = testData.title || "Mock Test";
-    
-    // JSON doesn't specify duration, assuming 3 minutes per question for standard JEE prep
-    const duration = testData.questions.length * 3; 
-    document.getElementById('inst-duration').innerText = duration;
-    document.getElementById('inst-duration-text').innerText = duration;
-    
-    let totalQs = testData.questions.length;
-    let totalScore = testData.questions.reduce((sum, q) => sum + q.marks.pos, 0);
+    document.getElementById('inst-test-title').innerText = testData.title || "Anvesham Mock Test";
 
-    const sectionsList = document.getElementById('inst-sections-list');
-    sectionsList.innerHTML = '';
-
-    sectionsData.forEach(sec => {
-        // Sample marking from the first question of the section
-        let pos = sec.questions[0].marks.pos;
-        let neg = sec.questions[0].marks.neg;
-        const li = document.createElement('li');
-        li.innerHTML = `<strong>${sec.name}</strong>: ${sec.questions.length} questions (+${pos} for correct, -${neg} for incorrect)`;
-        sectionsList.appendChild(li);
-    });
-
-    document.getElementById('inst-total-qs').innerText = totalQs;
-    document.getElementById('inst-total-score').innerText = totalScore;
+    // 1. Handle Variable Duration (If JSON misses it, default to 60)
+    let defaultDuration = testData.duration || 60;
     
-    // Store duration for later use
-    testData.durationMinutes = duration; 
+    // Inject it into the editable input box
+    const durationInput = document.getElementById('inst-custom-duration');
+    if (durationInput) durationInput.value = defaultDuration;
+
+    // 2. Populate the NTA Sidebar Profile
+    if (currentUser) {
+        document.getElementById('inst-user-name').innerText = currentUser.displayName;
+        document.getElementById('inst-user-avatar').src = currentUser.photoURL;
+    } else {
+        document.getElementById('inst-user-name').innerText = "Guest Candidate";
+        document.getElementById('inst-user-avatar').src = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
+    }
+
+    // 3. Reset the checkbox and button every time you open a new test
+    const declCheck = document.getElementById('declaration-check');
+    const btnStart = document.getElementById('btn-start-exam');
+    if (declCheck && btnStart) {
+        declCheck.checked = false;
+        btnStart.disabled = true;
+        btnStart.style.opacity = "0.5";
+    }
 }
 
+// ================= GLOBAL EXAM TRIGGERS =================
 const declCheck = document.getElementById('declaration-check');
 const btnStart = document.getElementById('btn-start-exam');
 
-declCheck.addEventListener('change', (e) => btnStart.disabled = !e.target.checked);
-btnStart.addEventListener('click', () => { initExam(); showScreen('screen-exam'); });
+// 1. Unlock button when checkbox is clicked
+if (declCheck && btnStart) {
+    declCheck.addEventListener('change', (e) => {
+        btnStart.disabled = !e.target.checked;
+        btnStart.style.opacity = e.target.checked ? "1" : "0.5";
+    });
 
+    // 2. Launch Exam when "I am ready to begin" is clicked
+    btnStart.addEventListener('click', () => {
+        // Read the duration exactly as the user typed it in the box
+        let customTime = parseInt(document.getElementById('inst-custom-duration').value);
+        
+        // Safety check: if they type '0' or clear the box, force it to 60
+        if(!customTime || customTime <= 0) customTime = 60; 
+
+        // Lock the duration into the engine
+        testData.durationMinutes = customTime;
+
+        initExam();
+        showScreen('screen-exam');
+    });
+}
 // ================= Screen 3: Live Exam Engine =================
 function initExam() {
     document.getElementById('exam-title').innerText = testData.title || "Exam";
+// NEW: Inject Google Profile into the Live Exam Sidebar
+    if (currentUser) {
+        const avatar = document.getElementById('exam-user-avatar');
+        const name = document.getElementById('exam-user-name');
+        if (avatar) avatar.src = currentUser.photoURL;
+        if (name) name.innerText = currentUser.displayName;
+    }
     flattenQuestions();
     renderTabs();
     startTimer(testData.durationMinutes * 60);
@@ -323,12 +349,11 @@ function renderTabs() {
     updatePopovers(); // Initialize the counts
 }
 
-// NEW FUNCTION: Updates the specific numbers inside the hover dropdowns
+// NEW: Strict grid HTML for hover popovers
 function updatePopovers() {
     sectionsData.forEach((sec, idx) => {
         let counts = {0:0, 1:0, 2:0, 3:0, 4:0};
         
-        // Tally up the states for THIS specific section
         allQuestions.filter(q => q.secIndex === idx).forEach(q => {
             counts[questionStates[q.globalIndex]]++;
         });
@@ -337,16 +362,30 @@ function updatePopovers() {
         if(popover) {
             popover.innerHTML = `
                 <div class="popover-header">${sec.name} Overview</div>
-                <div class="popover-stat-row"><span class="badge answered">${counts[2]}</span> Answered</div>
-                <div class="popover-stat-row"><span class="badge not-answered">${counts[1]}</span> Not Answered</div>
-                <div class="popover-stat-row"><span class="badge not-visited">${counts[0]}</span> Not Visited</div>
-                <div class="popover-stat-row"><span class="badge marked">${counts[3]}</span> Marked</div>
-                <div class="popover-stat-row"><span class="badge marked-answered">${counts[4]}</span> Answered & Marked</div>
+                <div class="popover-stat-row">
+                    <div class="nta-shape shape-sm s-answered">${counts[2]}</div> 
+                    <span class="pop-text">Answered</span>
+                </div>
+                <div class="popover-stat-row">
+                    <div class="nta-shape shape-sm s-not-answered">${counts[1]}</div> 
+                    <span class="pop-text">Not Answered</span>
+                </div>
+                <div class="popover-stat-row">
+                    <div class="nta-shape shape-sm s-not-visited">${counts[0]}</div> 
+                    <span class="pop-text">Not Visited</span>
+                </div>
+                <div class="popover-stat-row">
+                    <div class="nta-shape shape-sm s-marked">${counts[3]}</div> 
+                    <span class="pop-text">Marked</span>
+                </div>
+                <div class="popover-stat-row">
+                    <div class="nta-shape shape-sm s-answered-marked">${counts[4]}<span class="tiny-tick">✔</span></div> 
+                    <span class="pop-text">Answered & Marked</span>
+                </div>
             `;
         }
     });
 }
-
 
 function updateActiveTab(secIndex) {
     document.querySelectorAll('.tab').forEach(tab => {
@@ -434,23 +473,33 @@ function updatePalette() {
         let state = questionStates[q.globalIndex];
         counts[state]++;
         
-        let stateClass = ['not-visited', 'not-answered', 'answered', 'marked', 'marked-answered'][state];
+// 🚨 NEW: Map to the exact NTA shapes from the CSS!
+        let stateClass = ['s-not-visited', 's-not-answered', 's-answered', 's-marked', 's-answered-marked'][state];
 
         const btn = document.createElement('button');
         btn.className = `badge pal-btn ${stateClass}`;
         btn.innerText = q.displayNumber; // Keeps global question number (e.g., 9, 10, 11)
         btn.onclick = () => loadQuestion(q.globalIndex);
+        palette.appendChild(btn);btn.className = `nta-shape pal-btn ${stateClass}`;
+        
+        // Inject the tiny green tick if it's "Answered & Marked"
+        if (state === 4) {
+            btn.innerHTML = `${q.displayNumber}<span class="tiny-tick">✔</span>`;
+        } else {
+            btn.innerText = q.displayNumber; 
+        }
+        
+        btn.onclick = () => loadQuestion(q.globalIndex);
         palette.appendChild(btn);
     });
 
-    // Update the right-side legend counts for the CURRENT section only
+    // Update the right-side legend counts for the CURRENT section
     document.getElementById('cnt-not-vis').innerText = counts[0];
     document.getElementById('cnt-not-ans').innerText = counts[1];
     document.getElementById('cnt-ans').innerText = counts[2];
     document.getElementById('cnt-marked').innerText = counts[3];
-    document.getElementById('cnt-mark-ans').innerText = counts[4];
+    document.getElementById('cnt-mark-ans').innerHTML = `${counts[4]}<span class="tiny-tick">✔</span>`;
     
-    // Refresh the hidden dropdown menus so they stay perfectly synced
     updatePopovers();
 }
 // Replaces getSelectedOption to handle both Radios and Text inputs
