@@ -316,6 +316,44 @@ if (declCheck && btnStart) {
         showScreen('screen-exam');
     });
 }
+// ================= Screen 3: Live Exam Engine =================
+function initExam() {
+    document.getElementById('exam-title').innerText = testData.title || "Exam";
+// NEW: Inject Google Profile into the Live Exam Sidebar
+    if (currentUser) {
+        const avatar = document.getElementById('exam-user-avatar');
+        const name = document.getElementById('exam-user-name');
+        if (avatar) avatar.src = currentUser.photoURL;
+        if (name) name.innerText = currentUser.displayName;
+    }
+    flattenQuestions();
+    renderTabs();
+    startTimer(testData.durationMinutes * 60);
+    loadQuestion(0);
+}
+
+function flattenQuestions() {
+    allQuestions = []; 
+userAnswers = {}; 
+    timeSpentOnQuestion = {}; // NEW: Reset time for new attempt
+    currentQuestionStartTime = 0; // NEW: Reset time for new attempt
+    sectionsData.forEach((sec, sIdx) => {
+        sec.questions.forEach((q) => {
+            let globalIndex = allQuestions.length;
+            allQuestions.push({
+                ...q,
+                sectionName: sec.name,
+                globalIndex: globalIndex,
+                displayNumber: globalIndex + 1,
+                secIndex: sIdx,
+                posMarks: q.marks.pos,
+                negMarks: q.marks.neg
+            });
+            questionStates[globalIndex] = 0; // 0: Not Visited
+        });
+    });
+}
+
 // Replace the existing renderTabs function with this:
 function renderTabs() {
     const tabsContainer = document.getElementById('section-tabs');
