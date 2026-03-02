@@ -224,25 +224,32 @@ function processNewJSONFormat() {
 }
 // ================= Screen 2: Instructions =================
 function prepareInstructions() {
-    document.getElementById('inst-test-title').innerText = testData.title || "Anvesham Mock Test";
-
-    // 1. Handle Variable Duration (If JSON misses it, default to 60)
-    let defaultDuration = testData.duration || 60;
-    
-    // Inject it into the editable input box
-    const durationInput = document.getElementById('inst-custom-duration');
-    if (durationInput) durationInput.value = defaultDuration;
-
-    // 2. Populate the NTA Sidebar Profile
-    if (currentUser) {
-        document.getElementById('inst-user-name').innerText = currentUser.displayName;
-        document.getElementById('inst-user-avatar').src = currentUser.photoURL;
-    } else {
-        document.getElementById('inst-user-name').innerText = "Guest Candidate";
-        document.getElementById('inst-user-avatar').src = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
+    // 1. Safely update title
+    const titleEl = document.getElementById('inst-test-title');
+    if (titleEl) {
+        titleEl.innerText = testData.title || "Anvesham Mock Test";
     }
 
-    // 3. Reset the checkbox and button every time you open a new test
+    // 2. Handle Variable Duration (If JSON misses it, default to 60)
+    let defaultDuration = testData.duration || 60;
+    const durationInput = document.getElementById('inst-custom-duration');
+    if (durationInput) {
+        durationInput.value = defaultDuration;
+    }
+
+    // 3. Safely Populate the NTA Sidebar Profile
+    const userNameEl = document.getElementById('inst-user-name');
+    const userAvatarEl = document.getElementById('inst-user-avatar');
+    
+    if (currentUser) {
+        if (userNameEl) userNameEl.innerText = currentUser.displayName;
+        if (userAvatarEl) userAvatarEl.src = currentUser.photoURL;
+    } else {
+        if (userNameEl) userNameEl.innerText = "Guest Candidate";
+        if (userAvatarEl) userAvatarEl.src = "https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png";
+    }
+
+    // 4. Safely Reset the checkbox and button every time you open a new test
     const declCheck = document.getElementById('declaration-check');
     const btnStart = document.getElementById('btn-start-exam');
     if (declCheck && btnStart) {
@@ -250,33 +257,6 @@ function prepareInstructions() {
         btnStart.disabled = true;
         btnStart.style.opacity = "0.5";
     }
-}
-
-// ================= GLOBAL EXAM TRIGGERS =================
-const declCheck = document.getElementById('declaration-check');
-const btnStart = document.getElementById('btn-start-exam');
-
-// 1. Unlock button when checkbox is clicked
-if (declCheck && btnStart) {
-    declCheck.addEventListener('change', (e) => {
-        btnStart.disabled = !e.target.checked;
-        btnStart.style.opacity = e.target.checked ? "1" : "0.5";
-    });
-
-    // 2. Launch Exam when "I am ready to begin" is clicked
-    btnStart.addEventListener('click', () => {
-        // Read the duration exactly as the user typed it in the box
-        let customTime = parseInt(document.getElementById('inst-custom-duration').value);
-        
-        // Safety check: if they type '0' or clear the box, force it to 60
-        if(!customTime || customTime <= 0) customTime = 60; 
-
-        // Lock the duration into the engine
-        testData.durationMinutes = customTime;
-
-        initExam();
-        showScreen('screen-exam');
-    });
 }
 // ================= Screen 3: Live Exam Engine =================
 function initExam() {
